@@ -1,7 +1,5 @@
 ﻿using UnityEngine;
 using BepInEx;
-using System.Reflection;
-using System.Collections.Generic;
 
 namespace MT2_BETTER_RANDOM
 {
@@ -26,59 +24,71 @@ namespace MT2_BETTER_RANDOM
 
         private void Update()
         {
-            // Find an object of type CompendiumSection
-            var section = GameObject.FindObjectOfType<CompendiumSection>();
-            if (section == null)
+            // AllGameManagers -> SaveManager -> MetagameSave -> filtering -> RNG chosing -> display
+
+            if (!Input.GetKeyDown(KeyCode.F6)) return;
+
+            Logger.LogInfo("F6 pressed!");
+
+            // Step 1: Find AllGameManagers
+            var allManagers = GameObject.FindObjectOfType<AllGameManagers>();
+            if (allManagers == null)
             {
-                Logger.LogError("CompendiumSection not found.");
+                Logger.LogError("AllGameManagers not found.");
                 return;
             }
 
-            // Get the private field metagameSave
-            var metagameField = typeof(CompendiumSection).GetField("metagameSave", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (metagameField == null)
+            // Step 2: Get SaveManager
+            var saveManager = allManagers.GetSaveManager();
+            if (saveManager == null)
             {
-                Logger.LogError("metagameSave not found.");
+                Logger.LogError("SaveManager is null.");
                 return;
             }
 
-            var metagameSave = metagameField.GetValue(section);
+            // Step 3: Get MetagameSaveData
+            var metagameSave = saveManager.GetMetagameSave();
             if (metagameSave == null)
             {
-                Logger.LogError("Failed to get metagameSave value.");
+                Logger.LogError("MetagameSaveData is null.");
                 return;
             }
 
-            // Get the private field wonClassCombinations
-            var wonField = metagameSave.GetType().GetField("wonClassCombinations", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (wonField == null)
-            {
-                Logger.LogError("wonClassCombinations field not found.");
-                return;
-            }
+            // Step 4: Build all combinations and filter
+            var uncompleted = new List<(string mainClan, string subClan, int champ)>();
 
-            var listObj = wonField.GetValue(metagameSave);
-            if (listObj is IEnumerable<object> wonList)
+            foreach (var mainClan in clans.Keys)
             {
-                Logger.LogInfo("Found class combinations:");
-
-                foreach (var combo in wonList)
+                foreach (var subClan in clans.Keys)
                 {
-                    var comboType = combo.GetType();
+                    if (mainClan == subClan) continue;
 
-                    string classID = comboType.GetField("classID")?.GetValue(combo)?.ToString();
-                    string subClassID = comboType.GetField("subclassID")?.GetValue(combo)?.ToString();
-                    int champIndex = (int)(comboType.GetField("championIndex")?.GetValue(combo) ?? -1);
-                    int ascension = (int)(comboType.GetField("highestAscensionLevel")?.GetValue(combo) ?? -1);
-                    bool tfb = (bool)(comboType.GetField("isTfbVictory")?.GetValue(combo) ?? false);
-
-                    Logger.LogInfo($"Main: {classID}, Sub: {subClassID}, Champ: {champIndex}, Asc: {ascension}, TFB: {tfb}");
+                    foreach (int champ in championIndexes)
+                    {
+                        var result = metagameSave.GetClassCombinationWinAscensionLevel(mainClan, subClan, champ);
+                        if (result.highestAscensionLevel < 10 || !result.isTfbVictory)
+                        {
+                            uncompleted.Add((mainClan, subClan, champ));
+                        }
+                    }
                 }
             }
-            else
+
+            if (uncompleted.Count == 0)
             {
-                Logger.LogError("wonClassCombinations is not a list.");
+                Logger.LogInfo("All combinations are completed!");
+                return;
             }
+
+            Logger.LogInfo($"Uncompleted count: {uncompleted.Count}");
+
+            // Step 5: Pick a random uncompleted combo
+            var rng = new System.Random();
+            var chosen = uncompleted[rng.Next(uncompleted.Count)];
+
+            string mainName = clans.TryGetValue(chosen.mainClan, out var mName) ? mName : chosen.mainClan;
+            string subName = clans.TryGetValue(chosen.subClan, out var sName) ? sName : chosen.subClan;
+            Logger.LogInfo($"mainClan: {mainName}, subClan: {subName}, Champ: {chosen.champ}");
         }
     }
 }
