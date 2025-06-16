@@ -5,6 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>10.0</LangVersion>
+	<PostBuildEvent>
+		copy /Y "C:\Users\Szymon\source\repos\MT2_BETTER_RANDOM\MT2_BETTER_RANDOM\bin\Debug\netstandard2.1\MT2_BETTER_RANDOM.dll" "C:\Program Files (x86)\Steam\steamapps\common\Monster Train 2\BepInEx\plugins\"
+	</PostBuildEvent>
   </PropertyGroup>
 
   <ItemGroup>
