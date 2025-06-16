@@ -1,11 +1,14 @@
 ﻿using UnityEngine;
 using BepInEx;
+using HarmonyLib;
+using System.Reflection;
 
 namespace MT2_BETTER_RANDOM
 {
     [BepInPlugin("com.bokeher.better_random", "Better Random", "1.0.0")]
     public class BetterRandom : BaseUnityPlugin
     {
+        public static BetterRandom Instance { get; private set; }
         private readonly Dictionary<string, string> clans = new Dictionary<string, string>
         {
             { "5be08e27-c1e6-4b9d-b506-e4781e111dc8", "Banished" },
@@ -19,18 +22,20 @@ namespace MT2_BETTER_RANDOM
             { "4fe56363-b1d9-46b7-9a09-bd2df1a5329f", "Umbra" },
             { "fda62ada-520e-42f3-aa88-e4a78549c4a2", "Melting Remnant" },
         };
-
         private readonly int[] championIndexes = { 0, 1 };
+        private readonly List<(string mainClan, string subClan, int champ)> uncompleted = new();
 
-        private void Update()
+        private void Awake()
         {
-            // AllGameManagers -> SaveManager -> MetagameSave -> filtering -> RNG chosing -> display
+            Instance = this;
+            var harmony = new Harmony("com.bokeher.better_random");
+            harmony.PatchAll(Assembly.GetExecutingAssembly());
+        }
 
-            if (!Input.GetKeyDown(KeyCode.F6)) return;
+        public void OnRunSetupScreenOpened()
+        {
+            uncompleted.Clear();
 
-            Logger.LogInfo("F6 pressed!");
-
-            // Step 1: Find AllGameManagers
             var allManagers = GameObject.FindObjectOfType<AllGameManagers>();
             if (allManagers == null)
             {
@@ -38,7 +43,6 @@ namespace MT2_BETTER_RANDOM
                 return;
             }
 
-            // Step 2: Get SaveManager
             var saveManager = allManagers.GetSaveManager();
             if (saveManager == null)
             {
@@ -46,7 +50,6 @@ namespace MT2_BETTER_RANDOM
                 return;
             }
 
-            // Step 3: Get MetagameSaveData
             var metagameSave = saveManager.GetMetagameSave();
             if (metagameSave == null)
             {
@@ -54,16 +57,13 @@ namespace MT2_BETTER_RANDOM
                 return;
             }
 
-            // Step 4: Build all combinations and filter
-            var uncompleted = new List<(string mainClan, string subClan, int champ)>();
-
             foreach (var mainClan in clans.Keys)
             {
                 foreach (var subClan in clans.Keys)
                 {
                     if (mainClan == subClan) continue;
 
-                    foreach (int champ in championIndexes)
+                    foreach (var champ in championIndexes)
                     {
                         var result = metagameSave.GetClassCombinationWinAscensionLevel(mainClan, subClan, champ);
                         if (result.highestAscensionLevel < 10 || !result.isTfbVictory)
@@ -74,21 +74,43 @@ namespace MT2_BETTER_RANDOM
                 }
             }
 
+            Logger.LogInfo($"Uncompleted combinations updated: {uncompleted.Count}");
+        }
+
+        private void Update()
+        {
+            if (!Input.GetKeyDown(KeyCode.F6)) return;
+
+            Logger.LogInfo("F6 pressed!");
+
+            if (uncompleted.IsNullOrEmpty())
+            {
+                Logger.LogInfo("'uncompleted' is null or empty!");
+                return;
+            }
+
             if (uncompleted.Count == 0)
             {
                 Logger.LogInfo("All combinations are completed!");
                 return;
             }
 
-            Logger.LogInfo($"Uncompleted count: {uncompleted.Count}");
-
-            // Step 5: Pick a random uncompleted combo
             var rng = new System.Random();
             var chosen = uncompleted[rng.Next(uncompleted.Count)];
 
             string mainName = clans.TryGetValue(chosen.mainClan, out var mName) ? mName : chosen.mainClan;
             string subName = clans.TryGetValue(chosen.subClan, out var sName) ? sName : chosen.subClan;
-            Logger.LogInfo($"mainClan: {mainName}, subClan: {subName}, Champ: {chosen.champ}");
+
+            Logger.LogInfo($"Main Clan: {mainName}, Sub Clan: {subName}, Champion: {chosen.champ}");
+        }
+    }
+
+    [HarmonyPatch(typeof(RunSetupScreen), "Start")]
+    public class RunSetupScreen_Start_Patch
+    {
+        static void Postfix()
+        {
+            BetterRandom.Instance?.OnRunSetupScreenOpened();
         }
     }
 }
