@@ -51,6 +51,18 @@ Locate the following snippet in the `.csproj` file:
 ```  
 with the path to the DLL file produced by your build (the output of your project).
 
+### Update Project Dependencies
+
+To successfully compile the project, you also **need to update project dependencies** in your local development environment:
+
+- Make sure the project references the correct path to **BepInEx** and **UnityEngine** DLLs.
+- These are typically located in your installed Monster Train 2 game folder under `BepInEx/core` and `MonoBleedingEdge/lib/mono/unityjit`.
+
+Update your project references accordingly in Visual Studio (or your preferred IDE), or directly in the `.csproj` file if needed.
+
+Without correcting these paths, the project may fail to build due to missing or unresolved references.
+
+
 #### Replace  
 ```xml
 "C:\Program Files (x86)\Steam\steamapps\common\Monster Train 2\BepInEx\plugins\"
