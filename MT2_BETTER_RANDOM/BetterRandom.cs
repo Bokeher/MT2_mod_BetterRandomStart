@@ -2,13 +2,14 @@
 using BepInEx;
 using HarmonyLib;
 using System.Reflection;
+using ShinyShoe;
 
 namespace MT2_BETTER_RANDOM
 {
     [BepInPlugin("com.bokeher.better_random", "Better Random", "1.0.0")]
     public class BetterRandom : BaseUnityPlugin
     {
-        public static BetterRandom Instance { get; private set; }
+        public static BetterRandom? Instance { get; private set; }
         private readonly Dictionary<string, string> clans = new Dictionary<string, string>
         {
             { "5be08e27-c1e6-4b9d-b506-e4781e111dc8", "Banished" },
@@ -103,6 +104,74 @@ namespace MT2_BETTER_RANDOM
 
             Logger.LogInfo($"Main Clan: {mainName}, Sub Clan: {subName}, Champion: {chosen.champ}");
         }
+
+        public void AddCustomButton()
+        {
+            GameUISelectableButton? settingsButton = null;
+            foreach (var btn in GameObject.FindObjectsOfType<GameUISelectableButton>())
+            {
+                if (btn.gameObject.name == "SettingsButton")
+                {
+                    settingsButton = btn;
+                    break;
+                }
+            }
+
+            if (settingsButton == null)
+            {
+                Logger.LogWarning("SettingsButton not found");
+                return;
+            }
+
+            var canvas = settingsButton.gameObject.GetComponentInParent<Canvas>();
+            if (canvas == null)
+            {
+                Logger.LogWarning("Canvas not found");
+                return;
+            }
+
+            GameObject randomButton = new GameObject("CustomRandomButton");
+            randomButton.transform.SetParent(canvas.transform, false);
+
+            var rect = randomButton.AddComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(110, 50);
+
+            var image = randomButton.AddComponent<UnityEngine.UI.Image>();
+            image.color = Color.red;
+
+            var button = randomButton.AddComponent<UnityEngine.UI.Button>();
+            button.onClick.AddListener(onRandomButtonClick);
+
+            GameObject buttonText = new GameObject("ButtonText");
+            buttonText.transform.SetParent(randomButton.transform, false);
+            var text = buttonText.AddComponent<UnityEngine.UI.Text>();
+            text.text = "Better Random";
+            text.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            text.alignment = TextAnchor.MiddleCenter;
+            text.color = Color.white;
+
+            var textRect = text.GetComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+
+            var settingsRect = settingsButton.GetComponent<RectTransform>();
+
+            rect.anchorMin = settingsRect.anchorMin;
+            rect.anchorMax = settingsRect.anchorMax;
+            rect.pivot = settingsRect.pivot;
+
+            Vector2 anchoredPos = settingsRect.anchoredPosition;
+            anchoredPos.y -= (settingsRect.rect.height + 10);
+            anchoredPos.x -= 9;
+            rect.anchoredPosition = anchoredPos;
+        }
+
+        private void onRandomButtonClick()
+        {
+            Logger.LogInfo("Random button pressed");
+        }
     }
 
     [HarmonyPatch(typeof(RunSetupScreen), "Start")]
@@ -111,6 +180,7 @@ namespace MT2_BETTER_RANDOM
         static void Postfix()
         {
             BetterRandom.Instance?.OnRunSetupScreenOpened();
+            BetterRandom.Instance?.AddCustomButton();
         }
     }
 }
