@@ -33,7 +33,7 @@ namespace MT2_BETTER_RANDOM
             harmony.PatchAll(Assembly.GetExecutingAssembly());
         }
 
-        public void OnRunSetupScreenOpened()
+        public void GetUncompletedCombinations()
         {
             uncompleted.Clear();
 
@@ -76,33 +76,6 @@ namespace MT2_BETTER_RANDOM
             }
 
             Logger.LogInfo($"Uncompleted combinations updated: {uncompleted.Count}");
-        }
-
-        private void Update()
-        {
-            if (!Input.GetKeyDown(KeyCode.F6)) return;
-
-            Logger.LogInfo("F6 pressed!");
-
-            if (uncompleted.IsNullOrEmpty())
-            {
-                Logger.LogInfo("'uncompleted' is null or empty!");
-                return;
-            }
-
-            if (uncompleted.Count == 0)
-            {
-                Logger.LogInfo("All combinations are completed!");
-                return;
-            }
-
-            var rng = new System.Random();
-            var chosen = uncompleted[rng.Next(uncompleted.Count)];
-
-            string mainName = clans.TryGetValue(chosen.mainClan, out var mName) ? mName : chosen.mainClan;
-            string subName = clans.TryGetValue(chosen.subClan, out var sName) ? sName : chosen.subClan;
-
-            Logger.LogInfo($"Main Clan: {mainName}, Sub Clan: {subName}, Champion: {chosen.champ}");
         }
 
         public void AddCustomButton()
@@ -170,7 +143,25 @@ namespace MT2_BETTER_RANDOM
 
         private void onRandomButtonClick()
         {
-            Logger.LogInfo("Random button pressed");
+            if (uncompleted.IsNullOrEmpty())
+            {
+                Logger.LogInfo("'uncompleted' is null or empty!");
+                return;
+            }
+
+            if (uncompleted.Count == 0)
+            {
+                Logger.LogInfo("All combinations are completed!");
+                return;
+            }
+
+            var rng = new System.Random();
+            var chosen = uncompleted[rng.Next(uncompleted.Count)];
+
+            string mainName = clans.TryGetValue(chosen.mainClan, out var mName) ? mName : chosen.mainClan;
+            string subName = clans.TryGetValue(chosen.subClan, out var sName) ? sName : chosen.subClan;
+
+            Logger.LogInfo($"Main Clan: {mainName}, Sub Clan: {subName}, Champion: {chosen.champ}");
         }
     }
 
@@ -179,7 +170,8 @@ namespace MT2_BETTER_RANDOM
     {
         static void Postfix()
         {
-            BetterRandom.Instance?.OnRunSetupScreenOpened();
+            // On Run Setup Screen Opened
+            BetterRandom.Instance?.GetUncompletedCombinations();
             BetterRandom.Instance?.AddCustomButton();
         }
     }
