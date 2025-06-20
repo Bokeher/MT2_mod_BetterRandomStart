@@ -10,21 +10,11 @@ namespace MT2_BETTER_RANDOM
     public class BetterRandom : BaseUnityPlugin
     {
         public static BetterRandom? Instance { get; private set; }
-        private readonly Dictionary<string, string> clans = new Dictionary<string, string>
-        {
-            { "5be08e27-c1e6-4b9d-b506-e4781e111dc8", "Banished" },
-            { "ab9c9f6f-2543-4ca5-b7e5-e2eb125445b8", "Pyreborne" },
-            { "0df83271-5359-48df-9365-e73b7b2d0130", "Luna Coven" },
-            { "3c98c8eb-fc7c-4b35-925e-6b5ab0f69896", "Underlegion" },
-            { "9aaf1009-3fbe-4ac5-9f99-a3a702ff7f27", "Lazarus League" },
-            { "c595c344-d323-4cf1-9ad6-41edc2aebbd0", "Hellhorned" },
-            { "fd119fcf-c2cf-469e-8a5a-e9b0f265560d", "Awoken" },
-            { "9317cf9a-04ec-49da-be29-0e4ed61eb8ba", "Stygian Guard" },
-            { "4fe56363-b1d9-46b7-9a09-bd2df1a5329f", "Umbra" },
-            { "fda62ada-520e-42f3-aa88-e4a78549c4a2", "Melting Remnant" },
-        };
         private readonly int[] championIndexes = { 0, 1 };
-        private readonly List<(string mainClan, string subClan, int champ)> uncompleted = new();
+        private IReadOnlyList<(string mainClan, string subClan, int champ)>? uncompleted;
+        private IReadOnlyList<ClassData>? allClassDatas;
+        private AllGameManagers? allGameManagers;
+        private List<String>? clanIds;
 
         private void Awake()
         {
@@ -33,38 +23,92 @@ namespace MT2_BETTER_RANDOM
             harmony.PatchAll(Assembly.GetExecutingAssembly());
         }
 
-        public void GetUncompletedCombinations()
+        public void onRunSetupScreenOpened()
         {
-            uncompleted.Clear();
-
-            var allManagers = GameObject.FindObjectOfType<AllGameManagers>();
-            if (allManagers == null)
+            allGameManagers = GameObject.FindObjectOfType<AllGameManagers>();
+            if (allGameManagers == null)
             {
-                Logger.LogError("AllGameManagers not found.");
+                Logger.LogError("AllGameManagers is null");
                 return;
             }
 
-            var saveManager = allManagers.GetSaveManager();
+            allClassDatas = getAllClans();
+            if (allClassDatas == null)
+        {
+                Logger.LogError("AllClassDatas is null");
+                return;
+            }
+
+            clanIds = getClanIds();
+            if (clanIds == null)
+            {
+                Logger.LogError("ClanIds is null");
+                return;
+            }
+
+            uncompleted = GetUncompletedCombinations() ?? new();
+            AddCustomButton();
+        }
+
+        private List<string> getClanIds()
+        {
+            List<String> list = new();
+            foreach (ClassData clan in allClassDatas!)
+            {
+                list.Add(clan.GetID());
+            }
+            return list;
+        }
+
+        private IReadOnlyList<ClassData>? getAllClans()
+        {
+            var allGameData = allGameManagers!.GetAllGameData();
+            if (allGameData == null)
+            {
+                Logger.LogError("ClassManager not found.");
+                return null;
+            }
+
+            IReadOnlyList<ClassData> list = allGameData.GetAllClassDatas();
+            foreach (ClassData classData in list)
+            {
+                Logger.LogInfo(classData.GetID());
+                Logger.LogInfo(classData.GetTitle());
+            }
+
+            return list;
+        }
+
+        public List<(string mainClan, string subClan, int champ)>? GetUncompletedCombinations()
+        {
+            var saveManager = allGameManagers!.GetSaveManager();
             if (saveManager == null)
             {
                 Logger.LogError("SaveManager is null.");
-                return;
+                return null;
             }
 
             var metagameSave = saveManager.GetMetagameSave();
             if (metagameSave == null)
             {
                 Logger.LogError("MetagameSaveData is null.");
-                return;
+                return null;
             }
 
-            foreach (var mainClan in clans.Keys)
+            if (allClassDatas == null)
             {
-                foreach (var subClan in clans.Keys)
+                Logger.LogError("AllClassDatas is null.");
+                return null;
+            }
+
+            var uncompleted = new List<(string mainClan, string subClan, int champ)>();
+            foreach (String mainClan in clanIds!)
+            {
+                foreach (String subClan in clanIds)
                 {
                     if (mainClan == subClan) continue;
 
-                    foreach (var champ in championIndexes)
+                    foreach (int champ in championIndexes)
                     {
                         var result = metagameSave.GetClassCombinationWinAscensionLevel(mainClan, subClan, champ);
                         if (result.highestAscensionLevel < 10 || !result.isTfbVictory)
@@ -76,6 +120,7 @@ namespace MT2_BETTER_RANDOM
             }
 
             Logger.LogInfo($"Uncompleted combinations updated: {uncompleted.Count}");
+            return uncompleted;
         }
 
         public void AddCustomButton()
@@ -149,7 +194,7 @@ namespace MT2_BETTER_RANDOM
                 return;
             }
 
-            if (uncompleted.Count == 0)
+            if (uncompleted!.Count == 0)
             {
                 Logger.LogInfo("All combinations are completed!");
                 return;
@@ -158,8 +203,8 @@ namespace MT2_BETTER_RANDOM
             var rng = new System.Random();
             var chosen = uncompleted[rng.Next(uncompleted.Count)];
 
-            string mainName = clans.TryGetValue(chosen.mainClan, out var mName) ? mName : chosen.mainClan;
-            string subName = clans.TryGetValue(chosen.subClan, out var sName) ? sName : chosen.subClan;
+            string mainName = allClassDatas?.FirstOrDefault(c => c.GetID() == chosen.mainClan)?.GetTitle() ?? chosen.mainClan;
+            string subName = allClassDatas?.FirstOrDefault(c => c.GetID() == chosen.subClan)?.GetTitle() ?? chosen.subClan;
 
             Logger.LogInfo($"Main Clan: {mainName}, Sub Clan: {subName}, Champion: {chosen.champ}");
         }
@@ -170,9 +215,7 @@ namespace MT2_BETTER_RANDOM
     {
         static void Postfix()
         {
-            // On Run Setup Screen Opened
-            BetterRandom.Instance?.GetUncompletedCombinations();
-            BetterRandom.Instance?.AddCustomButton();
+            BetterRandom.Instance?.onRunSetupScreenOpened();
         }
     }
 }
