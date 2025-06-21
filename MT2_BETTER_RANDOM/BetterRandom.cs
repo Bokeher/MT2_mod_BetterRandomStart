@@ -22,7 +22,7 @@ namespace MT2_BETTER_RANDOM
             var harmony = new Harmony("com.bokeher.better_random");
             harmony.PatchAll(Assembly.GetExecutingAssembly());
         }
-
+            
         public void onRunSetupScreenOpened()
         {
             allGameManagers = GameObject.FindObjectOfType<AllGameManagers>();
@@ -34,7 +34,7 @@ namespace MT2_BETTER_RANDOM
 
             allClassDatas = getAllClans();
             if (allClassDatas == null)
-        {
+            {
                 Logger.LogError("AllClassDatas is null");
                 return;
             }
@@ -123,6 +123,25 @@ namespace MT2_BETTER_RANDOM
             return uncompleted;
         }
 
+        private int getClanLevel(string classId)
+        {
+            var saveManager = allGameManagers!.GetSaveManager();
+            if (saveManager == null)
+            {
+                Logger.LogError("SaveManager is null.");
+                return 1; // 1 is in game code
+            }
+
+            var metagameSave = saveManager.GetMetagameSave();
+            if (metagameSave == null)
+            {
+                Logger.LogError("MetagameSaveData is null.");
+                return 1; 
+            }
+
+            return metagameSave.GetLevel(classId);
+        }
+
         public void AddCustomButton()
         {
             GameUISelectableButton? settingsButton = null;
@@ -137,14 +156,14 @@ namespace MT2_BETTER_RANDOM
 
             if (settingsButton == null)
             {
-                Logger.LogWarning("SettingsButton not found");
+                Logger.LogError("SettingsButton not found");
                 return;
             }
 
             var canvas = settingsButton.gameObject.GetComponentInParent<Canvas>();
             if (canvas == null)
             {
-                Logger.LogWarning("Canvas not found");
+                Logger.LogError("Canvas not found");
                 return;
             }
 
@@ -190,23 +209,54 @@ namespace MT2_BETTER_RANDOM
         {
             if (uncompleted.IsNullOrEmpty())
             {
-                Logger.LogInfo("'uncompleted' is null or empty!");
+                Logger.LogError("'uncompleted' is null or empty!");
                 return;
             }
 
             if (uncompleted!.Count == 0)
             {
-                Logger.LogInfo("All combinations are completed!");
+                Logger.LogError("All combinations are completed!");
                 return;
             }
 
             var rng = new System.Random();
             var chosen = uncompleted[rng.Next(uncompleted.Count)];
 
-            string mainName = allClassDatas?.FirstOrDefault(c => c.GetID() == chosen.mainClan)?.GetTitle() ?? chosen.mainClan;
-            string subName = allClassDatas?.FirstOrDefault(c => c.GetID() == chosen.subClan)?.GetTitle() ?? chosen.subClan;
+            ClassData? mainClan = allClassDatas?.FirstOrDefault(cd => cd.GetID() == chosen.mainClan);
+            ClassData? subClan = allClassDatas?.FirstOrDefault(cd => cd.GetID() == chosen.subClan);
+
+            if (mainClan == null || subClan == null)
+            {
+                Logger.LogError("MainClan or SubClan is null");
+                return;
+            }
+
+            string mainName = mainClan.GetTitle();
+            string subName = subClan.GetTitle();
 
             Logger.LogInfo($"Main Clan: {mainName}, Sub Clan: {subName}, Champion: {chosen.champ}");
+
+            var classInfos = UnityEngine.Object.FindObjectsOfType<RunSetupClassLevelInfoUI>();
+            if(classInfos == null || classInfos.Length < 2)
+            {
+                Logger.LogError("RunSetupClassLevelInfoUI is null or doesnt contain main and sub clans");
+                return;
+            }
+
+            var mainClassInfo = classInfos[0];
+            var subClassInfo = classInfos[1];
+
+            // TODO: CHECK IF THIS WORKS CORRECTLY AND NOT OVERRIDE CLAN LEVELS
+            int mainClanLevel = getClanLevel(mainClan.GetID());
+            int subClanLevel = getClanLevel(subClan.GetID());
+
+            // pick here since it doesnt matter for the logbook which sub clan variant is chosen
+            int subClassChamp = UnityEngine.Random.Range(0, 2);
+
+            mainClassInfo.SetClass(mainClan, mainClanLevel, chosen.champ);
+            subClassInfo.SetClass(subClan, subClanLevel, subClassChamp);
+
+            // TODO: update UI, set covenant 10?, check if clans are unlocked, change UI of button, tests
         }
     }
 
