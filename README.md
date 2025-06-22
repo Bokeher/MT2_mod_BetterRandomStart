@@ -50,6 +50,11 @@ Locate the following snippet in the `.csproj` file:
 "C:\Users\Szymon\source\repos\MT2_BETTER_RANDOM\MT2_BETTER_RANDOM\bin\Debug\netstandard2.1\MT2_BETTER_RANDOM.dll"
 ```  
 with the path to the DLL file produced by your build (the output of your project).
+#### Replace  
+```xml
+"C:\Program Files (x86)\Steam\steamapps\common\Monster Train 2\BepInEx\plugins\"
+```  
+with the path to your game's plugins folder.
 
 ### Update Project Dependencies
 
