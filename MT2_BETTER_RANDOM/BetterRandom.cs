@@ -256,7 +256,18 @@ namespace MT2_BETTER_RANDOM
             mainClassInfo.SetClass(mainClan, mainClanLevel, chosen.champ);
             subClassInfo.SetClass(subClan, subClanLevel, subClassChamp);
 
-            // TODO: update UI, set covenant 10?, check if clans are unlocked, change UI of button, tests
+            var runSetupScreen = GameObject.FindObjectOfType<RunSetupScreen>();
+
+            var refreshCharacterMethod = typeof(RunSetupScreen).GetMethod("RefreshCharacters", BindingFlags.Instance | BindingFlags.NonPublic);
+            refreshCharacterMethod?.Invoke(runSetupScreen, new object[] { false });
+
+            var RefreshClanCovenantUIMethod = typeof(RunSetupScreen).GetMethod("RefreshClanCovenantUI", BindingFlags.Instance | BindingFlags.NonPublic);
+            RefreshClanCovenantUIMethod?.Invoke(runSetupScreen, null);
+
+            mainClassInfo.ShowCardPreview();
+            subClassInfo.ShowCardPreview();
+
+            // TODO: check if clans are unlocked, change UI of button, tests
         }
     }
 
