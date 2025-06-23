@@ -101,11 +101,35 @@ namespace MT2_BETTER_RANDOM
                 return null;
             }
 
+            FieldInfo field = typeof(MetagameSaveData).GetField("unlockedClassIDs", BindingFlags.NonPublic | BindingFlags.Instance);
+            var unlockedClassIDs = field.GetValue(metagameSave) as List<string>;
+
+            List<String> unlockedClanIds = new List<String>();
+
+            if (unlockedClassIDs.Count < 8) // 8 is max (10 clans and 2 are default unlocked)
+            {
+                foreach(var clan in allClassDatas)
+                {
+                    // These 2 are default unlocked
+                    if(clan.GetTitle() == "Banished" ||  clan.GetTitle() == "Pyreborne")
+                    {
+                        unlockedClanIds.Add(clan.GetID());
+                    }
+                    if(unlockedClassIDs.Contains(clan.GetID())) {
+                        unlockedClanIds.Add(clan.GetID());
+                    }
+                }
+            }
+
+            //TODO: test this further, and check for alternate champion unlock
+
             var uncompleted = new List<(string mainClan, string subClan, int champ)>();
             foreach (String mainClan in clanIds!)
             {
+                if (!unlockedClanIds.Contains(mainClan) && unlockedClassIDs.Count < 8) continue;
                 foreach (String subClan in clanIds)
                 {
+                    if (!unlockedClanIds.Contains(subClan) && unlockedClassIDs.Count < 8) continue;
                     if (mainClan == subClan) continue;
 
                     foreach (int champ in championIndexes)
