@@ -1,8 +1,8 @@
-﻿using UnityEngine;
-using BepInEx;
+﻿using BepInEx;
 using HarmonyLib;
-using System.Reflection;
 using ShinyShoe;
+using System.Reflection;
+using UnityEngine;
 
 namespace MT2_BETTER_RANDOM
 {
@@ -11,10 +11,12 @@ namespace MT2_BETTER_RANDOM
     {
         public static BetterRandom? Instance { get; private set; }
         private readonly int[] championIndexes = { 0, 1 };
-        private IReadOnlyList<(string mainClan, string subClan, int champ)>? uncompleted;
+        private IReadOnlyList<(string mainClan, string subClan, int mainChampIndex)>? uncompleted;
         private IReadOnlyList<ClassData>? allClassDatas;
         private AllGameManagers? allGameManagers;
         private List<String>? clanIds;
+
+        private MetagameSaveData? metagameSave;
 
         private void Awake()
         {
@@ -22,7 +24,7 @@ namespace MT2_BETTER_RANDOM
             var harmony = new Harmony("com.bokeher.better_random");
             harmony.PatchAll(Assembly.GetExecutingAssembly());
         }
-            
+
         public void onRunSetupScreenOpened()
         {
             allGameManagers = GameObject.FindObjectOfType<AllGameManagers>();
@@ -88,7 +90,7 @@ namespace MT2_BETTER_RANDOM
                 return null;
             }
 
-            var metagameSave = saveManager.GetMetagameSave();
+            metagameSave = saveManager.GetMetagameSave();
             if (metagameSave == null)
             {
                 Logger.LogError("MetagameSaveData is null.");
@@ -105,40 +107,53 @@ namespace MT2_BETTER_RANDOM
             var unlockedClassIDs = field.GetValue(metagameSave) as List<string>;
 
             List<String> unlockedClanIds = new List<String>();
+            if (unlockedClassIDs == null)
+            {
+                Logger.LogError("unlockedClassIDs is null");
+                return null;
+            }
+
 
             if (unlockedClassIDs.Count < 8) // 8 is max (10 clans and 2 are default unlocked)
             {
-                foreach(var clan in allClassDatas)
+                foreach (var clan in allClassDatas)
                 {
                     // These 2 are default unlocked
-                    if(clan.GetTitle() == "Banished" ||  clan.GetTitle() == "Pyreborne")
+                    if (clan.GetTitle() == "Banished" || clan.GetTitle() == "Pyreborne")
                     {
                         unlockedClanIds.Add(clan.GetID());
                     }
-                    if(unlockedClassIDs.Contains(clan.GetID())) {
+
+                    if (unlockedClassIDs.Contains(clan.GetID()))
+                    {
                         unlockedClanIds.Add(clan.GetID());
                     }
                 }
             }
 
-            //TODO: test this further, and check for alternate champion unlock
+            //TODO: test this further
 
             var uncompleted = new List<(string mainClan, string subClan, int champ)>();
-            foreach (String mainClan in clanIds!)
+            foreach (String mainClanId in clanIds!)
             {
-                if (!unlockedClanIds.Contains(mainClan) && unlockedClassIDs.Count < 8) continue;
-                foreach (String subClan in clanIds)
+                if (!unlockedClanIds.Contains(mainClanId) && unlockedClassIDs.Count < 8) continue;
+                foreach (String subClanId in clanIds)
                 {
-                    if (!unlockedClanIds.Contains(subClan) && unlockedClassIDs.Count < 8) continue;
-                    if (mainClan == subClan) continue;
+                    if (!unlockedClanIds.Contains(subClanId) && unlockedClassIDs.Count < 8) continue;
+                    if (mainClanId == subClanId) continue;
 
-                    foreach (int champ in championIndexes)
+                    foreach (int mainChampIndex in championIndexes) // champIndex: 0 or 1
                     {
-                        var result = metagameSave.GetClassCombinationWinAscensionLevel(mainClan, subClan, champ);
+                        // skip if this champion is not unlocked (alternate champion unlocks after level 5)
+                        int mainChampLevel = metagameSave.GetLevel(mainClanId);
+                        if (mainChampLevel < 5 && mainChampIndex == 1) continue;
+
+                        var result = metagameSave.GetClassCombinationWinAscensionLevel(mainClanId, subClanId, mainChampIndex);
                         if (result.highestAscensionLevel < 10 || !result.isTfbVictory)
                         {
-                            uncompleted.Add((mainClan, subClan, champ));
+                            uncompleted.Add((mainClanId, subClanId, mainChampIndex));
                         }
+
                     }
                 }
             }
@@ -160,7 +175,7 @@ namespace MT2_BETTER_RANDOM
             if (metagameSave == null)
             {
                 Logger.LogError("MetagameSaveData is null.");
-                return 1; 
+                return 1;
             }
 
             return metagameSave.GetLevel(classId);
@@ -169,7 +184,7 @@ namespace MT2_BETTER_RANDOM
         public void AddCustomButton()
         {
             GameUISelectableButton? settingsButton = null;
-            foreach (var btn in GameObject.FindObjectsOfType<GameUISelectableButton>())
+            foreach (var btn in FindObjectsOfType<GameUISelectableButton>())
             {
                 if (btn.gameObject.name == "SettingsButton")
                 {
@@ -228,7 +243,6 @@ namespace MT2_BETTER_RANDOM
             anchoredPos.x -= 9;
             rect.anchoredPosition = anchoredPos;
         }
-
         private void onRandomButtonClick()
         {
             if (uncompleted.IsNullOrEmpty())
@@ -258,29 +272,32 @@ namespace MT2_BETTER_RANDOM
             string mainName = mainClan.GetTitle();
             string subName = subClan.GetTitle();
 
-            Logger.LogInfo($"Main Clan: {mainName}, Sub Clan: {subName}, Champion: {chosen.champ}");
-
             var classInfos = UnityEngine.Object.FindObjectsOfType<RunSetupClassLevelInfoUI>();
-            if(classInfos == null || classInfos.Length < 2)
+            if (classInfos == null || classInfos.Length < 2)
             {
                 Logger.LogError("RunSetupClassLevelInfoUI is null or doesnt contain main and sub clans");
                 return;
             }
 
-            var mainClassInfo = classInfos[0];
-            var subClassInfo = classInfos[1];
+            var (mainClassInfo, subClassInfo) = (classInfos[0], classInfos[1]);
 
-            // TODO: CHECK IF THIS WORKS CORRECTLY AND NOT OVERRIDE CLAN LEVELS
             int mainClanLevel = getClanLevel(mainClan.GetID());
             int subClanLevel = getClanLevel(subClan.GetID());
 
-            // pick here since it doesnt matter for the logbook which sub clan variant is chosen
-            int subClassChamp = UnityEngine.Random.Range(0, 2);
+            // pick secondary clan variant now since it doesnt matter for the logbook completion
+            int subClassChampIndex = UnityEngine.Random.Range(0, 2);
 
-            mainClassInfo.SetClass(mainClan, mainClanLevel, chosen.champ);
-            subClassInfo.SetClass(subClan, subClanLevel, subClassChamp);
+            // check if selected champion is unlocked (alt champion is unlocked after level 5)
+            int subChampLevel = metagameSave!.GetLevel(subClan.GetID());
+            if (subChampLevel < 5 && subChampLevel == 1)
+            {
+                subClassChampIndex = 0;
+            }
 
-            var runSetupScreen = GameObject.FindObjectOfType<RunSetupScreen>();
+            mainClassInfo.SetClass(mainClan, mainClanLevel, chosen.mainChampIndex);
+            subClassInfo.SetClass(subClan, subClanLevel, subClassChampIndex);
+
+            var runSetupScreen = FindObjectOfType<RunSetupScreen>();
 
             var refreshCharacterMethod = typeof(RunSetupScreen).GetMethod("RefreshCharacters", BindingFlags.Instance | BindingFlags.NonPublic);
             refreshCharacterMethod?.Invoke(runSetupScreen, new object[] { false });
@@ -291,7 +308,7 @@ namespace MT2_BETTER_RANDOM
             mainClassInfo.ShowCardPreview();
             subClassInfo.ShowCardPreview();
 
-            // TODO: check if clans are unlocked, change UI of button, tests
+            // TODO: change UI of button, tests
         }
     }
 
