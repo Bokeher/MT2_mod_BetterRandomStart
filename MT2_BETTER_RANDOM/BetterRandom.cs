@@ -206,18 +206,44 @@ namespace MT2_BETTER_RANDOM
                 return;
             }
 
+            GameObject border = new GameObject("ButtonBorder");
+            border.transform.SetParent(canvas.transform, false);
+
+            var borderRect = border.AddComponent<RectTransform>();
+            borderRect.sizeDelta = new Vector2(110 + 2, 50 + 2);
+
+            var settingsRect = settingsButton.GetComponent<RectTransform>();
+            borderRect.anchorMin = settingsRect.anchorMin;
+            borderRect.anchorMax = settingsRect.anchorMax;
+            borderRect.pivot = settingsRect.pivot;
+
+            Vector2 anchoredPos = settingsRect.anchoredPosition;
+            anchoredPos.y -= (settingsRect.rect.height + 10);
+            anchoredPos.x -= 9;
+            borderRect.anchoredPosition = anchoredPos;
+
+            // Border background
+            var borderImage = border.AddComponent<UnityEngine.UI.Image>();
+            borderImage.color = Color.white;
+
+            // ----- BUTTON -----
             GameObject randomButton = new GameObject("CustomRandomButton");
-            randomButton.transform.SetParent(canvas.transform, false);
+            randomButton.transform.SetParent(border.transform, false);
 
             var rect = randomButton.AddComponent<RectTransform>();
             rect.sizeDelta = new Vector2(110, 50);
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
 
             var image = randomButton.AddComponent<UnityEngine.UI.Image>();
-            image.color = Color.red;
+            image.color = new Color(49f / 255f, 54f / 255f, 55f / 255f, 1f);
 
             var button = randomButton.AddComponent<UnityEngine.UI.Button>();
             button.onClick.AddListener(onRandomButtonClick);
 
+            // ----- TEXT -----
             GameObject buttonText = new GameObject("ButtonText");
             buttonText.transform.SetParent(randomButton.transform, false);
             var text = buttonText.AddComponent<UnityEngine.UI.Text>();
@@ -231,17 +257,6 @@ namespace MT2_BETTER_RANDOM
             textRect.anchorMax = Vector2.one;
             textRect.offsetMin = Vector2.zero;
             textRect.offsetMax = Vector2.zero;
-
-            var settingsRect = settingsButton.GetComponent<RectTransform>();
-
-            rect.anchorMin = settingsRect.anchorMin;
-            rect.anchorMax = settingsRect.anchorMax;
-            rect.pivot = settingsRect.pivot;
-
-            Vector2 anchoredPos = settingsRect.anchoredPosition;
-            anchoredPos.y -= (settingsRect.rect.height + 10);
-            anchoredPos.x -= 9;
-            rect.anchoredPosition = anchoredPos;
         }
         private void onRandomButtonClick()
         {
