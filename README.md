@@ -1,6 +1,8 @@
-# MT2_BETTER_RANDOM
+# MT2_BetterRandomStart
 
-Better Random is a BepInEx mod for *Monster Train 2* designed to enhance randomization by tracking completed clan combinations and avoiding duplicates.
+**BetterRandomStart** is a BepInEx mod for *Monster Train 2* that allows you to start a run with a random combination of clans that you haven’t beaten Titans with on Covenant 10. Essentially, it’s designed to help you complete your entire logbook by running random presets without duplicates.
+
+Available on [Nexus Mods](https://www.nexusmods.com/monstertrain2/mods/10).
 
 ## Dependencies
 
