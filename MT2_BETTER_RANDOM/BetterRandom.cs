@@ -71,14 +71,7 @@ namespace MT2_BETTER_RANDOM
                 return null;
             }
 
-            IReadOnlyList<ClassData> list = allGameData.GetAllClassDatas();
-            foreach (ClassData classData in list)
-            {
-                Logger.LogInfo(classData.GetID());
-                Logger.LogInfo(classData.GetTitle());
-            }
-
-            return list;
+            return allGameData.GetAllClassDatas();
         }
 
         public List<(string mainClan, string subClan, int champ)>? GetUncompletedCombinations()
@@ -131,8 +124,6 @@ namespace MT2_BETTER_RANDOM
                 }
             }
 
-            //TODO: test this further
-
             var uncompleted = new List<(string mainClan, string subClan, int champ)>();
             foreach (String mainClanId in clanIds!)
             {
@@ -158,7 +149,6 @@ namespace MT2_BETTER_RANDOM
                 }
             }
 
-            Logger.LogInfo($"Uncompleted combinations updated: {uncompleted.Count}");
             return uncompleted;
         }
 
@@ -322,8 +312,6 @@ namespace MT2_BETTER_RANDOM
 
             mainClassInfo.ShowCardPreview();
             subClassInfo.ShowCardPreview();
-
-            // TODO: change UI of button, tests
         }
     }
 
