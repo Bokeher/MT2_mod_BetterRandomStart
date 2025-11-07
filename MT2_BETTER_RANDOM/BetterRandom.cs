@@ -231,7 +231,10 @@ namespace MT2_BETTER_RANDOM
             image.color = new Color(49f / 255f, 54f / 255f, 55f / 255f, 1f);
 
             var button = randomButton.AddComponent<UnityEngine.UI.Button>();
-            button.onClick.AddListener(onRandomButtonClick);
+            button.onClick.AddListener(() =>
+            {
+                BetterRandom.Instance?.onRandomButtonClick();
+            });
 
             // ----- TEXT -----
             GameObject buttonText = new GameObject("ButtonText");
@@ -312,6 +315,7 @@ namespace MT2_BETTER_RANDOM
 
             mainClassInfo.ShowCardPreview();
             subClassInfo.ShowCardPreview();
+
         }
     }
 
