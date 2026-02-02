@@ -1,6 +1,6 @@
 {
     "name": "BetterRandomStart_PreventLogbookDuplicates",
-    "version_number": "1.1.1",
+    "version_number": "1.2.0",
     "website_url": "https://github.com/Bokeher/MT2_mod_BetterRandomStart",
     "description": "Allows you to start a run with a random combination of clans that you haven't beaten Titans with on Covenant 10. Essentially, it's designed to help you complete your entire logbook by running random presets without duplicates.",
     "dependencies": [
