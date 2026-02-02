@@ -67,11 +67,38 @@ namespace MT2_BETTER_RANDOM
             var allGameData = allGameManagers!.GetAllGameData();
             if (allGameData == null)
             {
-                Logger.LogError("ClassManager not found.");
+                Logger.LogError("AllGameData not found.");
                 return null;
             }
 
-            return allGameData.GetAllClassDatas();
+            var saveManager = allGameManagers.GetSaveManager();
+            var metagameSave = saveManager?.GetMetagameSave();
+
+            if (metagameSave == null)
+            {
+                Logger.LogError("MetagameSaveData is null.");
+                return null;
+            }
+
+            var result = new List<ClassData>();
+
+            foreach (var classData in allGameData.GetAllClassDatas())
+            {
+                DLC requiredDlc = classData.GetRequiredDlc();
+
+                if (metagameSave.IsDlcInstalledAndEnabled(requiredDlc))
+                {
+                    result.Add(classData);
+                }
+                else
+                {
+                    Logger.LogInfo(
+                        $"Skipping clan {classData.GetID()} – DLC {requiredDlc} not installed"
+                    );
+                }
+            }
+
+            return result;
         }
 
         public List<(string mainClan, string subClan, int champ)>? GetUncompletedCombinations()
